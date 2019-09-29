@@ -9,6 +9,7 @@ const multiaddr = require('multiaddr')
 const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
 const { P2PNode } = require('./p2p')
+const delay = require('delay')
 
 function createPeer(callback) {
   // create a new PeerInfo object with a newly-generated PeerId
@@ -34,31 +35,16 @@ function createPeer(callback) {
   })
 }
 
-function handleStart(peer) {
-      // get the list of addresses for our peer now that it's started.
-      // there should be one address of the form
-      // `/ip4/127.0.0.1/tcp/${assignedPort}/ipfs/${generatedPeerId}`,
-      // where `assignedPort` is randomly chosen by the operating system
-      // and `generatedPeerId` is generated in the `createPeer` function above.
-      const addresses = peer.peerInfo.multiaddrs.toArray()
-      console.log('peer started. listening on addresses:')
-      addresses.forEach(addr => console.log(addr.toString()))
-}
-
-function pingRemotePeer(localPeer) {
-  const remoteAddr = multiaddr('/ip4/10.0.1.52/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
-
-  // Convert the multiaddress into a PeerInfo object
-  const peerId = PeerId.createFromB58String(remoteAddr.getPeerId())
-  const remotePeerInfo = new PeerInfo(peerId)
-  remotePeerInfo.multiaddrs.add(remoteAddr)
-
-  console.log('pinging remote peer at ', remoteAddr.toString())
-  localPeer.ping(remotePeerInfo, (err, time) => {
-    if (err) {
-      return console.error('error pinging: ', err)
-    }
-    console.log(`pinged ${remoteAddr.toString()} in ${time}ms`)
+function pingRemotePeer(localPeer, remoteAddr, remotePeerInfo) {
+  return new Promise((resolve, reject) => {
+    localPeer.ping(remotePeerInfo, (err, time) => {
+      if (err) {
+        console.error('error pinging: ', err)
+        return reject(err)
+      }
+      console.log(`pinged ${remoteAddr.toString()} in ${time}ms`)
+      resolve()
+    })
   })
 }
 
@@ -68,13 +54,31 @@ createPeer((err, peer) => {
     throw err
   }
 
-  peer.start(err => {
+  peer.start(async err => {
     if (err) {
       throw err
     }
 
-    handleStart(peer)
-    pingRemotePeer(peer)
+    // get the list of addresses for our peer now that it's started.
+    // there should be one address of the form
+    // `/ip4/127.0.0.1/tcp/${assignedPort}/ipfs/${generatedPeerId}`,
+    // where `assignedPort` is randomly chosen by the operating system
+    // and `generatedPeerId` is generated in the `createPeer` function above.
+    const addresses = peer.peerInfo.multiaddrs.toArray()
+    console.log('peer started. listening on addresses:')
+    addresses.forEach(addr => console.log(addr.toString()))
+
+    // Convert the multiaddress into a PeerInfo object
+    const remoteAddr = multiaddr('/ip4/10.0.1.52/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
+    const peerId = PeerId.createFromB58String(remoteAddr.getPeerId())
+    const remotePeerInfo = new PeerInfo(peerId)
+    remotePeerInfo.multiaddrs.add(remoteAddr)
+
+    console.log('pinging remote peer at ', remoteAddr.toString())
+    while (true) {
+      await pingRemotePeer(peer, remoteAddr, remotePeerInfo)
+      await delay(1000)
+    }
   })
 })
 
