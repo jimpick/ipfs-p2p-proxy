@@ -16,3 +16,12 @@ $ ipfs p2p listen --allow-custom-protocol /filecoin-api /ip4/127.0.0.1/tcp/3453
 ```
 $ curl http://localhost:8080/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f/http/api/id
 ```
+
+```
+$ curl http://localhost:8080/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f/http/api/id
+```
+
+```
+$ ipfs swarm connect /ip4/64.46.28.178/tcp/10141/ipfs/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f
+connect QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f success
+```

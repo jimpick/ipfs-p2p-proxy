@@ -10,6 +10,7 @@ const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
 const { P2PNode } = require('./p2p')
 const delay = require('delay')
+const pull = require('pull-stream')
 
 function createPeer(callback) {
   // create a new PeerInfo object with a newly-generated PeerId
@@ -48,6 +49,29 @@ function pingRemotePeer(localPeer, remoteAddr, remotePeerInfo) {
   })
 }
 
+function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
+  return new Promise((resolve, reject) => {
+    localPeer.dialProtocol(remotePeerInfo, '/libp2p-http', (err, conn) => {
+      if (err) {
+        console.error('error dialing: ', err)
+        return reject(err)
+      }
+      console.log(`connection to /http ${remoteAddr.toString()}`, conn)
+      pull(
+        pull.values(['GET / HTTP/1.0']),
+        conn,
+        pull.collect((err, data) => {
+          if (err) {
+            return reject(err)
+          }
+          console.log('received http:', data.toString())
+          resolve()
+        })
+      )
+    })
+  })
+}
+
 // main entry point
 createPeer((err, peer) => {
   if (err) {
@@ -69,16 +93,24 @@ createPeer((err, peer) => {
     addresses.forEach(addr => console.log(addr.toString()))
 
     // Convert the multiaddress into a PeerInfo object
-    const remoteAddr = multiaddr('/ip4/10.0.1.52/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
+    // const remoteAddr = multiaddr('/ip4/10.0.1.52/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
+    // const remoteAddr = multiaddr('/ip4/64.46.28.178/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
+    const remoteAddr = multiaddr('/ip4/127.0.0.1/tcp/10000/ipfs/QmUJnydKzmZU6Hr4ZQpdkmXqG4B2cSmDxT7qUtw3JdVRE5')
     const peerId = PeerId.createFromB58String(remoteAddr.getPeerId())
     const remotePeerInfo = new PeerInfo(peerId)
     remotePeerInfo.multiaddrs.add(remoteAddr)
 
     console.log('pinging remote peer at ', remoteAddr.toString())
+    await pingRemotePeer(peer, remoteAddr, remotePeerInfo)
+    /*
     while (true) {
       await pingRemotePeer(peer, remoteAddr, remotePeerInfo)
       await delay(1000)
     }
+    */
+
+    console.log('getting filecoin id at ', remoteAddr.toString())
+    await getFilecoinId(peer, remoteAddr, remotePeerInfo)
   })
 })
 
