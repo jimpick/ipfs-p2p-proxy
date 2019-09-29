@@ -5,6 +5,7 @@ $ curl http://localhost:8080/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f/
 
 */
 
+const http = require('http')
 const multiaddr = require('multiaddr')
 const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
@@ -51,6 +52,44 @@ function pingRemotePeer(localPeer, remoteAddr, remotePeerInfo) {
 
 function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
   return new Promise((resolve, reject) => {
+
+    http.get('http://nodejs.org/dist/index.json', res => {
+      const { statusCode } = res
+      const contentType = res.headers['content-type']
+
+      let error
+      if (statusCode !== 200) {
+        error = new Error('Request Failed.\n' +
+                          `Status Code: ${statusCode}`)
+      } else if (!/^application\/json/.test(contentType)) {
+        error = new Error('Invalid content-type.\n' +
+                          `Expected application/json but received ${contentType}`)
+      }
+      if (error) {
+        console.error(error.message)
+        // Consume response data to free up memory
+        res.resume()
+        return reject(error)
+      }
+
+      res.setEncoding('utf8')
+      let rawData = ''
+      res.on('data', chunk => { rawData += chunk })
+      res.on('end', () => {
+        try {
+          const parsedData = JSON.parse(rawData)
+          console.log(parsedData)
+          resolve()
+        } catch (e) {
+          console.error(e.message)
+          reject(e)
+        }
+      })
+    }).on('error', (e) => {
+      console.error(`Got error: ${e.message}`)
+      reject(e)
+    })
+    /*
     localPeer.dialProtocol(remotePeerInfo, '/libp2p-http', (err, conn) => {
       if (err) {
         console.error('error dialing: ', err)
@@ -69,6 +108,7 @@ function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
         })
       )
     })
+    */
   })
 }
 
