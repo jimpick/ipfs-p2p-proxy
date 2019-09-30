@@ -6,7 +6,8 @@ $ curl http://localhost:8080/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f/
 */
 
 const http = require('http')
-const net = require('net')
+const { Duplex } = require('stream')
+const through2 = require('through2')
 const multiaddr = require('multiaddr')
 const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
@@ -14,6 +15,8 @@ const { P2PNode } = require('./p2p')
 const delay = require('delay')
 const pull = require('pull-stream')
 const toPull = require('stream-to-pull-stream')
+const toStream = require('pull-stream-to-stream')
+const duplexify = require('duplexify')
 
 function createPeer(callback) {
   // create a new PeerInfo object with a newly-generated PeerId
@@ -61,18 +64,29 @@ class Libp2pHttpAgent extends http.Agent {
 
   createConnection (options, cb) {
     console.log('Jim createConnection 1')
-    const socket = new net.Socket({
-      readable: true,
-      writable: true
-    })
-    // socket._handle = () => {}
-    const oldWrite = socket._write
-    socket._write = function (chunk, encoding, callback) {
-      console.log('Jim write', chunk)
-      oldWrite.call(socket, chunk, encoding, callback)
-    }
-    // return super.createConnection(options, cb)
     /*
+    const socket = new Duplex({
+      read (size) {
+        console.log('Jim read', size)
+      },
+      write (chunk, encoding, callback) {
+        console.log('Jim write', chunk.toString())
+      }
+    })
+    */
+    const input = through2(function (chunk, enc, callback) {
+      // console.log('Jim in', chunk.toString())
+      this.push(chunk)
+      callback()
+    })
+    const toLibp2p = toPull.source(input)
+    const output = through2(function (chunk, enc, callback) {
+      // console.log('Jim out', chunk.toString())
+      this.push(chunk)
+      callback()
+    })
+    const fromLibp2p = toPull.sink(output)
+    const socket = duplexify(input, output)
     this.localPeer.dialProtocol(this.remotePeerInfo, '/libp2p-http', (err, conn) => {
       if (err) {
         console.error('error dialing: ', err)
@@ -80,25 +94,26 @@ class Libp2pHttpAgent extends http.Agent {
       }
       socket.emit('connect')
       console.log('Jim createConnection 2')
-      const stream = toPull.duplex(socket)
       pull(
-        stream,
+        toLibp2p,
+        /*
         pull.map(function (b) {
           console.log('Jim stream -> conn', b.toString())
           return b
         }),
+        */
         conn,
+        /*
         pull.map(function (b) {
           console.log('Jim conn -> stream', b.toString())
           return b
         }),
-        stream
+        */
+        fromLibp2p
       )
       console.log('Jim createConnection 3')
-      // cb(null, socket)
+      cb(null, socket)
     })
-    */
-    return socket
   }
 }
 
