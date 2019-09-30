@@ -17,6 +17,7 @@
     "libp2p-secio": "^0.11.1",
     "libp2p-tcp": "0.13.1",
     "multiaddr": "^6.1.1",
-    "pull-stream": "^3.6.14"
+    "pull-stream": "^3.6.14",
+    "stream-to-pull-stream": "^1.7.3"
   }
 }

@@ -6,12 +6,14 @@ $ curl http://localhost:8080/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f/
 */
 
 const http = require('http')
+const net = require('net')
 const multiaddr = require('multiaddr')
 const PeerInfo = require('peer-info')
 const PeerId = require('peer-id')
 const { P2PNode } = require('./p2p')
 const delay = require('delay')
 const pull = require('pull-stream')
+const toPull = require('stream-to-pull-stream')
 
 function createPeer(callback) {
   // create a new PeerInfo object with a newly-generated PeerId
@@ -50,10 +52,66 @@ function pingRemotePeer(localPeer, remoteAddr, remotePeerInfo) {
   })
 }
 
+class Libp2pHttpAgent extends http.Agent {
+  constructor (localPeer, remotePeerInfo) {
+    super()
+    this.localPeer = localPeer
+    this.remotePeerInfo = remotePeerInfo
+  }
+
+  createConnection (options, cb) {
+    console.log('Jim createConnection 1')
+    const socket = new net.Socket({
+      readable: true,
+      writable: true
+    })
+    // socket._handle = () => {}
+    const oldWrite = socket._write
+    socket._write = function (chunk, encoding, callback) {
+      console.log('Jim write', chunk)
+      oldWrite.call(socket, chunk, encoding, callback)
+    }
+    // return super.createConnection(options, cb)
+    /*
+    this.localPeer.dialProtocol(this.remotePeerInfo, '/libp2p-http', (err, conn) => {
+      if (err) {
+        console.error('error dialing: ', err)
+        return cb(err)
+      }
+      socket.emit('connect')
+      console.log('Jim createConnection 2')
+      const stream = toPull.duplex(socket)
+      pull(
+        stream,
+        pull.map(function (b) {
+          console.log('Jim stream -> conn', b.toString())
+          return b
+        }),
+        conn,
+        pull.map(function (b) {
+          console.log('Jim conn -> stream', b.toString())
+          return b
+        }),
+        stream
+      )
+      console.log('Jim createConnection 3')
+      // cb(null, socket)
+    })
+    */
+    return socket
+  }
+}
+
 function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
   return new Promise((resolve, reject) => {
 
-    http.get('http://nodejs.org/dist/index.json', res => {
+    //const agent = new http.Agent()
+    const agent = new Libp2pHttpAgent(localPeer, remotePeerInfo)
+    const url = 'http://localhost:8080/ipfs/QmTuRwX8qE482j3R8SUQc2ZEYDX7XDFLo2DFopVyRjUTgt'
+    const opts = {
+      agent
+    }
+    http.get(url, opts, res => {
       const { statusCode } = res
       const contentType = res.headers['content-type']
 
@@ -61,9 +119,6 @@ function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
       if (statusCode !== 200) {
         error = new Error('Request Failed.\n' +
                           `Status Code: ${statusCode}`)
-      } else if (!/^application\/json/.test(contentType)) {
-        error = new Error('Invalid content-type.\n' +
-                          `Expected application/json but received ${contentType}`)
       }
       if (error) {
         console.error(error.message)
@@ -76,14 +131,8 @@ function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
       let rawData = ''
       res.on('data', chunk => { rawData += chunk })
       res.on('end', () => {
-        try {
-          const parsedData = JSON.parse(rawData)
-          console.log(parsedData)
-          resolve()
-        } catch (e) {
-          console.error(e.message)
-          reject(e)
-        }
+        console.log(rawData)
+        resolve()
       })
     }).on('error', (e) => {
       console.error(`Got error: ${e.message}`)
