@@ -63,7 +63,7 @@ class Libp2pHttpAgent extends http.Agent {
   }
 
   createConnection (options, cb) {
-    console.log('Jim createConnection 1')
+    // console.log('Jim createConnection 1')
     /*
     const socket = new Duplex({
       read (size) {
@@ -87,13 +87,13 @@ class Libp2pHttpAgent extends http.Agent {
     })
     const fromLibp2p = toPull.sink(output)
     const socket = duplexify(input, output)
-    this.localPeer.dialProtocol(this.remotePeerInfo, '/libp2p-http', (err, conn) => {
+    this.localPeer.dialProtocol(this.remotePeerInfo, '/http', (err, conn) => {
       if (err) {
         console.error('error dialing: ', err)
         return cb(err)
       }
       socket.emit('connect')
-      console.log('Jim createConnection 2')
+      // console.log('Jim createConnection 2')
       pull(
         toLibp2p,
         /*
@@ -111,7 +111,7 @@ class Libp2pHttpAgent extends http.Agent {
         */
         fromLibp2p
       )
-      console.log('Jim createConnection 3')
+      // console.log('Jim createConnection 3')
       cb(null, socket)
     })
   }
@@ -122,7 +122,8 @@ function getFilecoinId (localPeer, remoteAddr, remotePeerInfo) {
 
     //const agent = new http.Agent()
     const agent = new Libp2pHttpAgent(localPeer, remotePeerInfo)
-    const url = 'http://localhost:8080/ipfs/QmTuRwX8qE482j3R8SUQc2ZEYDX7XDFLo2DFopVyRjUTgt'
+    // const url = 'http://localhost:8080/ipfs/QmTuRwX8qE482j3R8SUQc2ZEYDX7XDFLo2DFopVyRjUTgt'
+    const url = 'http://localhost:3453/api/id'
     const opts = {
       agent
     }
@@ -198,8 +199,8 @@ createPeer((err, peer) => {
 
     // Convert the multiaddress into a PeerInfo object
     // const remoteAddr = multiaddr('/ip4/10.0.1.52/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
-    // const remoteAddr = multiaddr('/ip4/64.46.28.178/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
-    const remoteAddr = multiaddr('/ip4/127.0.0.1/tcp/10000/ipfs/QmUJnydKzmZU6Hr4ZQpdkmXqG4B2cSmDxT7qUtw3JdVRE5')
+    const remoteAddr = multiaddr('/ip4/64.46.28.178/tcp/10141/p2p/QmTj5ySrHZridAvMNiCGS7iXyPoHnAKmpf4W8ErQruKk8f')
+    // const remoteAddr = multiaddr('/ip4/127.0.0.1/tcp/10000/ipfs/QmUJnydKzmZU6Hr4ZQpdkmXqG4B2cSmDxT7qUtw3JdVRE5')
     const peerId = PeerId.createFromB58String(remoteAddr.getPeerId())
     const remotePeerInfo = new PeerInfo(peerId)
     remotePeerInfo.multiaddrs.add(remoteAddr)
